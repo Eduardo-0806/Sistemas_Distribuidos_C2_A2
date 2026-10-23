@@ -2,7 +2,7 @@
 
 ## Nucleo obrigatorio
 
-- [ ] **1. Persistir o indice** - `servicos/ingestao/app.py`
+- [x] **1. Persistir o indice** - `servicos/ingestao/app.py`
       O indice hoje some ao reiniciar. Guarde em arquivo ou banco vetorial.
 
 - [ ] **2. Busca por similaridade** - `servicos/recuperacao/app.py`
