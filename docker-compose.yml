@@ -2,6 +2,73 @@ services:
   redis:
     image: redis:7-alpine
     ports: ["6379:6379"]
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_dados:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
-  # TAREFA 4: acrescente aqui os tres servicos (ingestao, recuperacao, geracao)
-  # depois de escrever um Dockerfile para cada um.
+  ingestao:
+    build:
+      context: .
+      dockerfile: servicos/ingestao/Dockerfile
+    ports: ["8001:8001"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      ARQUIVO_INDICE: /app/dados/indice.json
+    volumes:
+      - indice_dados:/app/dados
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/saude', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  worker:
+    build:
+      context: .
+      dockerfile: servicos/ingestao/Dockerfile
+    command: ["python", "-m", "servicos.ingestao.worker"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      URL_INGESTAO: http://ingestao:8001
+    depends_on:
+      redis:
+        condition: service_healthy
+      ingestao:
+        condition: service_healthy
+
+  recuperacao:
+    build:
+      context: .
+      dockerfile: servicos/recuperacao/Dockerfile
+    ports: ["8002:8002"]
+    environment:
+      URL_INGESTAO: http://ingestao:8001
+    depends_on:
+      ingestao:
+        condition: service_healthy
+
+  geracao:
+    build:
+      context: .
+      dockerfile: servicos/geracao/Dockerfile
+    ports: ["8003:8003"]
+    environment:
+      URL_RECUPERACAO: http://recuperacao:8002
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_API_URL: ${LLM_API_URL:-https://api.openai.com/v1/chat/completions}
+      LLM_MODELO: ${LLM_MODELO:-gpt-4o-mini}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-20}
+    depends_on:
+      - recuperacao
+
+volumes:
+  redis_dados:
+  indice_dados:

@@ -11,7 +11,8 @@ import os
 import threading
 from pathlib import Path
 
-from fastapi import FastAPI
+import redis
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 from servicos.comum.embeddings import Vetorizador
@@ -19,6 +20,8 @@ from servicos.comum.embeddings import Vetorizador
 app = FastAPI(title="Ingestao - C2.A2")
 
 ARQUIVO_INDICE = Path(os.getenv("ARQUIVO_INDICE", "dados/indice.json"))
+fila = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+FILA_INGESTAO = "ingestao:documentos"
 
 vetorizador = Vetorizador()
 INDICE = []
@@ -63,8 +66,20 @@ def carregar_indice():
 carregar_indice()
 
 
-@app.post("/indexar")
+@app.post("/indexar", status_code=202)
 def indexar(docs: list[Documento]):
+    """Enfileira documentos para processamento pelo worker."""
+    mensagem = json.dumps([d.model_dump() for d in docs], ensure_ascii=False)
+    try:
+        fila.rpush(FILA_INGESTAO, mensagem)
+    except redis.RedisError:
+        raise HTTPException(503, "fila de ingestao indisponivel")
+    return {"enfileirados": len(docs)}
+
+
+@app.post("/indexar/processar", include_in_schema=False)
+def processar(docs: list[Documento]):
+    """Chamado pelo worker; mantem o indice sob responsabilidade da ingestao."""
     with _trava:
         for d in docs:
             INDICE.append({"texto": d.texto, "origem": d.origem})
