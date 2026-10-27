@@ -1,0 +1,3 @@
+Em uma arquitetura de microsservicos a aplicacao e dividida em servicos pequenos e independentes, cada um com uma responsabilidade bem definida, seu proprio processo e implantacao separada. Os servicos conversam por interfaces de rede como REST, gRPC ou mensageria.
+
+A vantagem e poder escalar, implantar e corrigir cada parte separadamente. O custo e lidar com os problemas de um sistema distribuido: latencia de rede, falhas parciais e consistencia entre servicos.

@@ -1,0 +1,5 @@
+O circuit breaker, ou disjuntor, protege um sistema contra uma dependencia que esta falhando. Depois de um numero de falhas seguidas ele abre e passa a recusar as chamadas na hora, sem esperar o tempo-limite, o que evita gastar recursos e acumular requisicoes presas.
+
+Depois de um tempo de espera o disjuntor entra no estado meio aberto e deixa passar uma chamada de teste. Se ela der certo o circuito fecha e o trafego volta ao normal; se falhar, ele abre de novo.
+
+O disjuntor costuma ser usado junto com tempo-limite e retentativa com recuo exponencial. A retentativa resolve falhas passageiras, e o disjuntor impede que as retentativas sobrecarreguem um servico que ja esta fora do ar.

@@ -13,14 +13,15 @@ from pathlib import Path
 
 import redis
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from servicos.comum.embeddings import Vetorizador
 
 app = FastAPI(title="Ingestao - C2.A2")
 
 ARQUIVO_INDICE = Path(os.getenv("ARQUIVO_INDICE", "dados/indice.json"))
-fila = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"))
+fila = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+                            socket_connect_timeout=3, socket_timeout=3)
 FILA_INGESTAO = "ingestao:documentos"
 
 vetorizador = Vetorizador()
@@ -30,7 +31,7 @@ _trava = threading.Lock()
 
 
 class Documento(BaseModel):
-    texto: str
+    texto: str = Field(min_length=1)
     origem: str = "desconhecida"
 
 
@@ -68,7 +69,10 @@ carregar_indice()
 
 @app.post("/indexar", status_code=202)
 def indexar(docs: list[Documento]):
-    """Enfileira documentos para processamento pelo worker."""
+    """Enfileira documentos para processamento pelo worker (assincrono:
+    responde 202 Accepted na hora, a indexacao acontece depois)."""
+    if not docs:
+        raise HTTPException(422, "envie ao menos um documento")
     mensagem = json.dumps([d.model_dump() for d in docs], ensure_ascii=False)
     try:
         fila.rpush(FILA_INGESTAO, mensagem)
@@ -79,14 +83,28 @@ def indexar(docs: list[Documento]):
 
 @app.post("/indexar/processar", include_in_schema=False)
 def processar(docs: list[Documento]):
-    """Chamado pelo worker; mantem o indice sob responsabilidade da ingestao."""
+    """Chamado pelo worker; mantem o indice sob responsabilidade da ingestao.
+
+    Idempotente: a fila entrega "pelo menos uma vez" (o worker reenfileira
+    em caso de falha), entao a mesma mensagem pode chegar duas vezes.
+    Um documento com a mesma origem e o mesmo texto de outro ja indexado
+    e ignorado, e o indice nao fica com duplicatas."""
     with _trava:
+        existentes = {(i["origem"], i["texto"]) for i in INDICE}
+        novos = 0
         for d in docs:
+            chave = (d.origem, d.texto)
+            if chave in existentes:
+                continue
             INDICE.append({"texto": d.texto, "origem": d.origem})
-        # reindexa tudo com o vocabulario novo
-        _revetorizar()
-        salvar_indice()
-        return {"indexados": len(INDICE)}
+            existentes.add(chave)
+            novos += 1
+        if novos:
+            # reindexa tudo com o vocabulario novo
+            _revetorizar()
+            salvar_indice()
+        return {"novos": novos, "ignorados": len(docs) - novos,
+                "indexados": len(INDICE)}
 
 
 @app.get("/indice")
@@ -99,5 +117,10 @@ def indice():
 
 @app.get("/saude")
 def saude():
+    try:
+        pendentes = fila.llen(FILA_INGESTAO)
+    except redis.RedisError:
+        pendentes = None  # fila fora do ar nao derruba a ingestao
     return {"status": "ok", "documentos": len(INDICE),
+            "fila_pendentes": pendentes,
             "arquivo_indice": str(ARQUIVO_INDICE)}

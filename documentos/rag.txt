@@ -1,0 +1,3 @@
+RAG, ou geracao aumentada por recuperacao, e a tecnica que permite a um modelo de linguagem responder com base em documentos proprios sem precisar ser retreinado. Primeiro os documentos sao transformados em vetores e indexados; depois, para cada pergunta, os trechos mais parecidos sao recuperados e enviados ao modelo junto com a pergunta.
+
+A similaridade do cosseno mede o quanto dois vetores apontam na mesma direcao e e usada para comparar a pergunta com os trechos indexados.

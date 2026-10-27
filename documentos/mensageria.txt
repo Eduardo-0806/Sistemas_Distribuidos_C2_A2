@@ -1,0 +1,3 @@
+Na mensageria os servicos se comunicam por meio de uma fila em vez de chamadas diretas. O produtor publica a mensagem e segue em frente, e o consumidor processa quando puder. Isso desacopla os servicos no tempo: se o consumidor estiver fora do ar, as mensagens esperam na fila.
+
+Uma fila confiavel garante entrega pelo menos uma vez. Como a mesma mensagem pode ser entregue mais de uma vez, o consumidor deve ser idempotente, ou seja, processar a mesma mensagem duas vezes deve ter o mesmo efeito que processar uma vez.

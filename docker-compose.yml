@@ -35,6 +35,7 @@ services:
       context: .
       dockerfile: servicos/ingestao/Dockerfile
     command: ["python", "-m", "servicos.ingestao.worker"]
+    restart: unless-stopped
     environment:
       REDIS_URL: redis://redis:6379/0
       URL_INGESTAO: http://ingestao:8001
@@ -54,6 +55,11 @@ services:
     depends_on:
       ingestao:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/saude', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   geracao:
     build:
@@ -66,8 +72,29 @@ services:
       LLM_API_URL: ${LLM_API_URL:-https://api.openai.com/v1/chat/completions}
       LLM_MODELO: ${LLM_MODELO:-gpt-4o-mini}
       LLM_TIMEOUT: ${LLM_TIMEOUT:-20}
+      LLM_TENTATIVAS: ${LLM_TENTATIVAS:-3}
+      LLM_LIMITE_FALHAS: ${LLM_LIMITE_FALHAS:-3}
+      LLM_ESPERA_SEGUNDOS: ${LLM_ESPERA_SEGUNDOS:-20}
     depends_on:
-      - recuperacao
+      recuperacao:
+        condition: service_healthy
+
+  # Tarefa unica: envia os .txt de documentos/ para a fila de ingestao e sai.
+  # Pode rodar a cada "up" sem duplicar nada (a ingestao e idempotente).
+  carga:
+    build:
+      context: .
+      dockerfile: servicos/ingestao/Dockerfile
+    command: ["python", "scripts/indexar_documentos.py", "--pasta", "/app/documentos"]
+    environment:
+      URL_INGESTAO: http://ingestao:8001
+    volumes:
+      - ./documentos:/app/documentos:ro
+      - ./scripts:/app/scripts:ro
+    depends_on:
+      ingestao:
+        condition: service_healthy
+    restart: "no"
 
 volumes:
   redis_dados:
