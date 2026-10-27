@@ -15,20 +15,23 @@
 - [x] **4. Mensageria** - novo worker + `docker-compose.yml`
       Ao menos UMA etapa do fluxo deve passar por fila, e nao por chamada direta. (Aula 8)
 
-- [ ] **5. Fluxo completo** - de ponta a ponta
+- [x] **5. Fluxo completo** - de ponta a ponta
       Pergunta entra em /perguntar e sai uma resposta fundamentada nos documentos.
 
-- [ ] **6. README com diagrama** da arquitetura dos tres servicos.
+- [x] **6. README com diagrama** da arquitetura dos tres servicos.
 
 ## Extensoes opcionais
 
-- [ ] Reordenar os trechos por relevancia (reranking)
-- [ ] Citar quais documentos embasaram a resposta
-- [ ] Avaliacao automatica simples da qualidade da resposta
+- [x] Reordenar os trechos por relevancia (reranking)
+- [x] Citar quais documentos embasaram a resposta
+- [x] Avaliacao automatica simples da qualidade da resposta
 - [ ] Trocar TF-IDF por embeddings de verdade (sentence-transformers)
 
 ## Antes de entregar
 
-- [ ] Desligue a internet: o modo simulado do LLM mantem o sistema de pe?
-- [ ] Derrube o servico de recuperacao: o disjuntor abre como esperado?
-- [ ] A chave da API esta FORA do codigo (em variavel de ambiente)?
+- [x] Desligue a internet: o modo simulado do LLM mantem o sistema de pe?
+      Sim. E com chave configurada e LLM inacessivel, responde 503 em modo degradado.
+- [x] Derrube o servico de recuperacao: o disjuntor abre como esperado?
+      Sim (disjuntor proprio da recuperacao; ver README > Testando as falhas).
+- [x] A chave da API esta FORA do codigo (em variavel de ambiente)?
+      Sim: LLM_API_KEY vem do .env, que esta no .gitignore.
