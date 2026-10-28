@@ -427,6 +427,6 @@ mesmo número de documentos (o índice é recarregado do volume).
 
 ## Integrantes
 
-- Eduardo ([@Eduardo-0806](https://github.com/Eduardo-0806)): tarefas 1 e 2
+- Eduardo Lopes: tarefas 1 e 2
 - Henrique Risciere: tarefas 3 e 4
 - Arthur Salume Sobral: tarefas 5 e 6, resiliência complementar e extensões
